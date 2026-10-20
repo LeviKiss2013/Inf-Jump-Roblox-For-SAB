@@ -1,21 +1,49 @@
 
+--========================================================
 -- KAI HUB | CINEMATIC INTRO + MOVEMENT GUI
--- For your own Roblox Studio experience
--- Location: StarterPlayer > StarterPlayerScripts
+-- Place in StarterPlayer > StarterPlayerScripts
+-- Create as a LocalScript in your own Roblox experience
+--========================================================
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-local speed = 30
-local infiniteJump = false
+-- Settings
+local walkSpeed = 30
+local jumpBoost = 1.5
+local flySpeed = 45
+local movementEnabled = false
 
---==================================================
+local character
+local humanoid
+local rootPart
+
+--========================================================
+-- CHARACTER SETUP
+--========================================================
+
+local function setupCharacter(char)
+    character = char
+    humanoid = char:WaitForChild("Humanoid")
+    rootPart = char:WaitForChild("HumanoidRootPart")
+
+    humanoid.WalkSpeed = walkSpeed
+end
+
+if player.Character then
+    task.spawn(setupCharacter, player.Character)
+end
+
+player.CharacterAdded:Connect(setupCharacter)
+
+--========================================================
 -- CINEMATIC INTRO
---==================================================
+--========================================================
 
 local intro = Instance.new("ScreenGui")
 intro.Name = "KaiHubIntro"
@@ -70,12 +98,6 @@ logoSize.MaxTextSize = 66
 logoSize.MinTextSize = 24
 logoSize.Parent = logo
 
-local logoStroke = Instance.new("UIStroke")
-logoStroke.Color = Color3.fromRGB(0, 100, 255)
-logoStroke.Thickness = 1.5
-logoStroke.Transparency = 0.2
-logoStroke.Parent = logo
-
 local subtitle = Instance.new("TextLabel")
 subtitle.AnchorPoint = Vector2.new(0.5, 0.5)
 subtitle.Position = UDim2.new(0.5, 0, 0.47, 0)
@@ -100,20 +122,14 @@ barBack.Size = UDim2.new(0.65, 0, 0, 6)
 barBack.BackgroundColor3 = Color3.fromRGB(27, 40, 61)
 barBack.BorderSizePixel = 0
 barBack.Parent = bg
-
-local barCorner = Instance.new("UICorner")
-barCorner.CornerRadius = UDim.new(1, 0)
-barCorner.Parent = barBack
+Instance.new("UICorner", barBack).CornerRadius = UDim.new(1, 0)
 
 local barFill = Instance.new("Frame")
 barFill.Size = UDim2.new(0, 0, 1, 0)
 barFill.BackgroundColor3 = Color3.fromRGB(0, 210, 255)
 barFill.BorderSizePixel = 0
 barFill.Parent = barBack
-
-local fillCorner = Instance.new("UICorner")
-fillCorner.CornerRadius = UDim.new(1, 0)
-fillCorner.Parent = barFill
+Instance.new("UICorner", barFill).CornerRadius = UDim.new(1, 0)
 
 local status = Instance.new("TextLabel")
 status.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -173,9 +189,9 @@ TweenService:Create(bg, TweenInfo.new(0.5), {
 task.wait(0.55)
 intro:Destroy()
 
---==================================================
+--========================================================
 -- MAIN KAI HUB GUI
---==================================================
+--========================================================
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "KaiHub"
@@ -183,12 +199,11 @@ gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
 local main = Instance.new("Frame")
-main.Size = UDim2.fromOffset(340, 290)
-main.Position = UDim2.new(0.5, -170, 0.5, -145)
+main.Size = UDim2.fromOffset(340, 300)
+main.Position = UDim2.new(0.5, -170, 0.5, -150)
 main.BackgroundColor3 = Color3.fromRGB(17, 19, 27)
 main.BorderSizePixel = 0
 main.Parent = gui
-
 Instance.new("UICorner", main).CornerRadius = UDim.new(0, 14)
 
 local outline = Instance.new("UIStroke")
@@ -231,21 +246,21 @@ close.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- Drag window using the header
-local dragging = false
+-- Draggable header
+local draggingWindow = false
 local dragStart
 local startPosition
 
 header.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
+        draggingWindow = true
         dragStart = input.Position
         startPosition = main.Position
     end
 end)
 
 UIS.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+    if draggingWindow and input.UserInputType == Enum.UserInputType.MouseMovement then
         local delta = input.Position - dragStart
         main.Position = UDim2.new(
             startPosition.X.Scale,
@@ -258,7 +273,7 @@ end)
 
 UIS.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
+        draggingWindow = false
     end
 end)
 
@@ -273,7 +288,10 @@ section.TextSize = 11
 section.TextXAlignment = Enum.TextXAlignment.Left
 section.Parent = main
 
--- Speed display
+--========================================================
+-- WALK SPEED SLIDER: 1–60
+--========================================================
+
 local speedLabel = Instance.new("TextLabel")
 speedLabel.Size = UDim2.new(1, -32, 0, 28)
 speedLabel.Position = UDim2.fromOffset(16, 94)
@@ -284,7 +302,6 @@ speedLabel.TextSize = 14
 speedLabel.TextXAlignment = Enum.TextXAlignment.Left
 speedLabel.Parent = main
 
--- Slider
 local track = Instance.new("Frame")
 track.Size = UDim2.new(1, -40, 0, 8)
 track.Position = UDim2.fromOffset(20, 134)
@@ -294,7 +311,7 @@ track.Parent = main
 Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
 
 local fill = Instance.new("Frame")
-fill.Size = UDim2.new(speed / 60, 0, 1, 0)
+fill.Size = UDim2.new(walkSpeed / 60, 0, 1, 0)
 fill.BackgroundColor3 = Color3.fromRGB(0, 210, 255)
 fill.BorderSizePixel = 0
 fill.Parent = track
@@ -303,7 +320,7 @@ Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
 local knob = Instance.new("TextButton")
 knob.Size = UDim2.fromOffset(18, 18)
 knob.AnchorPoint = Vector2.new(0.5, 0.5)
-knob.Position = UDim2.new(speed / 60, 0, 0.5, 0)
+knob.Position = UDim2.new(walkSpeed / 60, 0, 0.5, 0)
 knob.BackgroundColor3 = Color3.new(1, 1, 1)
 knob.Text = ""
 knob.Parent = track
@@ -312,20 +329,15 @@ Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
 local draggingSlider = false
 
 local function setSpeed(value)
-    speed = math.clamp(math.round(value), 1, 60)
-
+    walkSpeed = math.clamp(math.round(value), 1, 60)
     speedLabel.Text = "WalkSpeed                         "
-        .. speed .. " / 60"
+        .. walkSpeed .. " / 60"
 
-    fill.Size = UDim2.new(speed / 60, 0, 1, 0)
-    knob.Position = UDim2.new(speed / 60, 0, 0.5, 0)
+    fill.Size = UDim2.new(walkSpeed / 60, 0, 1, 0)
+    knob.Position = UDim2.new(walkSpeed / 60, 0, 0.5, 0)
 
-    -- Works for the character in your own experience.
-    local character = player.Character
-    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-
-    if humanoid then
-        humanoid.WalkSpeed = speed
+    if humanoid and humanoid.Health > 0 then
+        humanoid.WalkSpeed = walkSpeed
     end
 end
 
@@ -338,90 +350,115 @@ local function updateSlider(x)
 end
 
 knob.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
         draggingSlider = true
         updateSlider(input.Position.X)
     end
 end)
 
 track.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
         draggingSlider = true
         updateSlider(input.Position.X)
     end
 end)
 
 UIS.InputChanged:Connect(function(input)
-    if draggingSlider and (
-        input.UserInputType == Enum.UserInputType.MouseMovement
-        or input.UserInputType == Enum.UserInputType.Touch
-    ) then
+    if draggingSlider and input.UserInputType == Enum.UserInputType.MouseMovement then
         updateSlider(input.Position.X)
     end
 end)
 
 UIS.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
         draggingSlider = false
     end
 end)
 
--- Infinite jump toggle
-local jumpEnabled = false
+--========================================================
+-- INFINITE JUMP + FLY TOGGLE
+-- Uses your original jump/fly behavior
+--========================================================
 
-local jumpButton = Instance.new("TextButton")
-jumpButton.Size = UDim2.new(1, -32, 0, 43)
-jumpButton.Position = UDim2.fromOffset(16, 164)
-jumpButton.BackgroundColor3 = Color3.fromRGB(35, 41, 54)
-jumpButton.Text = "  Infinite Jump                              OFF"
-jumpButton.TextColor3 = Color3.fromRGB(220, 226, 238)
-jumpButton.Font = Enum.Font.GothamSemibold
-jumpButton.TextSize = 13
-jumpButton.TextXAlignment = Enum.TextXAlignment.Left
-jumpButton.Parent = main
-Instance.new("UICorner", jumpButton).CornerRadius = UDim.new(0, 9)
+local flyButton = Instance.new("TextButton")
+flyButton.Size = UDim2.new(1, -32, 0, 43)
+flyButton.Position = UDim2.fromOffset(16, 164)
+flyButton.BackgroundColor3 = Color3.fromRGB(35, 41, 54)
+flyButton.Text = "  Infinite Jump + Fly                 OFF"
+flyButton.TextColor3 = Color3.fromRGB(220, 226, 238)
+flyButton.Font = Enum.Font.GothamSemibold
+flyButton.TextSize = 13
+flyButton.TextXAlignment = Enum.TextXAlignment.Left
+flyButton.Parent = main
+Instance.new("UICorner", flyButton).CornerRadius = UDim.new(0, 9)
 
 local indicator = Instance.new("Frame")
 indicator.Size = UDim2.fromOffset(8, 8)
 indicator.Position = UDim2.new(1, -25, 0.5, -4)
 indicator.BackgroundColor3 = Color3.fromRGB(110, 117, 132)
-indicator.Parent = jumpButton
+indicator.Parent = flyButton
 Instance.new("UICorner", indicator).CornerRadius = UDim.new(1, 0)
 
-jumpButton.MouseButton1Click:Connect(function()
-    jumpEnabled = not jumpEnabled
+flyButton.MouseButton1Click:Connect(function()
+    movementEnabled = not movementEnabled
 
-    jumpButton.Text = "  Infinite Jump                              "
-        .. (jumpEnabled and "ON" or "OFF")
+    flyButton.Text = "  Infinite Jump + Fly                 "
+        .. (movementEnabled and "ON" or "OFF")
 
-    indicator.BackgroundColor3 = jumpEnabled
+    indicator.BackgroundColor3 = movementEnabled
         and Color3.fromRGB(0, 230, 160)
         or Color3.fromRGB(110, 117, 132)
 
-    jumpButton.BackgroundColor3 = jumpEnabled
+    flyButton.BackgroundColor3 = movementEnabled
         and Color3.fromRGB(24, 58, 55)
         or Color3.fromRGB(35, 41, 54)
 end)
 
-UIS.JumpRequest:Connect(function()
-    if not jumpEnabled then return end
-
-    local character = player.Character
-    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-
-    if humanoid and humanoid.Health > 0 then
-        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+-- Your original Space key jump boost
+UIS.InputBegan:Connect(function(input, processed)
+    if processed or input.KeyCode ~= Enum.KeyCode.Space then
+        return
     end
+
+    if not movementEnabled then
+        return
+    end
+
+    if not humanoid or not rootPart or humanoid.Health <= 0 then
+        return
+    end
+
+    humanoid.Jump = true
+
+    local velocity = rootPart.AssemblyLinearVelocity
+
+    rootPart.AssemblyLinearVelocity = Vector3.new(
+        velocity.X,
+        math.max(velocity.Y, 35) * jumpBoost,
+        velocity.Z
+    )
 end)
 
-player.CharacterAdded:Connect(function(character)
-    local humanoid = character:WaitForChild("Humanoid")
-    humanoid.WalkSpeed = speed
+-- Your original hold-Space fly behavior
+RunService.RenderStepped:Connect(function()
+    if not movementEnabled
+        or not UIS:IsKeyDown(Enum.KeyCode.Space)
+        or not humanoid
+        or not rootPart
+        or humanoid.Health <= 0 then
+        return
+    end
+
+    local velocity = rootPart.AssemblyLinearVelocity
+
+    rootPart.AssemblyLinearVelocity = Vector3.new(
+        velocity.X,
+        flySpeed,
+        velocity.Z
+    )
 end)
 
+-- Footer
 local footer = Instance.new("TextLabel")
 footer.Size = UDim2.new(1, -32, 0, 20)
 footer.Position = UDim2.fromOffset(16, 239)
@@ -433,6 +470,4 @@ footer.TextSize = 10
 footer.TextXAlignment = Enum.TextXAlignment.Left
 footer.Parent = main
 
--- Set the initial display and speed.
-setSpeed(speed)
-
+setSpeed(walkSpeed)
